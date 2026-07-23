@@ -1,0 +1,6 @@
+{
+  "name": "Perpustakaan SMP RK Makmur",
+  "description": "Sistem Informasi Perpustakaan SMP Swasta RK Makmur dengan dashboard modern Black Gold, pengelolaan data anggota dan buku, transaksi peminjaman, pencatatan kunjungan, statistik, dan cetak laporan PDF.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
