@@ -34,8 +34,8 @@ function getLocalOrInitial<T>(key: string, fallback: T): T {
 export function subscribeBooks(onData: (books: Book[]) => void) {
   const colRef = collection(db, 'books');
   return onSnapshot(colRef, async (snapshot) => {
+    const local = getLocalOrInitial<Book[]>('rk_makmur_books', INITIAL_BOOKS);
     if (snapshot.empty) {
-      const local = getLocalOrInitial<Book[]>('rk_makmur_books', INITIAL_BOOKS);
       if (local.length > 0) {
         for (const book of local) {
           await setDoc(doc(db, 'books', book.kodeBuku), book);
@@ -48,6 +48,17 @@ export function subscribeBooks(onData: (books: Book[]) => void) {
     snapshot.forEach((docSnap) => {
       booksList.push(docSnap.data() as Book);
     });
+
+    if (local.length > 0) {
+      const cloudIds = new Set(booksList.map(b => b.kodeBuku));
+      for (const b of local) {
+        if (!cloudIds.has(b.kodeBuku)) {
+          booksList.push(b);
+          setDoc(doc(db, 'books', b.kodeBuku), b).catch(e => console.error("Sync book error:", e));
+        }
+      }
+    }
+
     onData(booksList);
   }, (err) => {
     console.error("Firestore Subscribe Books Error:", err);
@@ -79,8 +90,8 @@ export async function deleteBookFromCloud(kodeBuku: string) {
 export function subscribeMembers(onData: (members: Member[]) => void) {
   const colRef = collection(db, 'members');
   return onSnapshot(colRef, async (snapshot) => {
+    const local = getLocalOrInitial<Member[]>('rk_makmur_members', INITIAL_MEMBERS);
     if (snapshot.empty) {
-      const local = getLocalOrInitial<Member[]>('rk_makmur_members', INITIAL_MEMBERS);
       if (local.length > 0) {
         for (const member of local) {
           await setDoc(doc(db, 'members', member.nomorAnggota), member);
@@ -93,6 +104,17 @@ export function subscribeMembers(onData: (members: Member[]) => void) {
     snapshot.forEach((docSnap) => {
       membersList.push(docSnap.data() as Member);
     });
+
+    if (local.length > 0) {
+      const cloudIds = new Set(membersList.map(m => m.nomorAnggota));
+      for (const m of local) {
+        if (!cloudIds.has(m.nomorAnggota)) {
+          membersList.push(m);
+          setDoc(doc(db, 'members', m.nomorAnggota), m).catch(e => console.error("Sync member error:", e));
+        }
+      }
+    }
+
     onData(membersList);
   }, (err) => {
     console.error("Firestore Subscribe Members Error:", err);
@@ -124,8 +146,8 @@ export async function deleteMemberFromCloud(nomorAnggota: string) {
 export function subscribeBorrowings(onData: (borrowings: Borrowing[]) => void) {
   const colRef = collection(db, 'borrowings');
   return onSnapshot(colRef, async (snapshot) => {
+    const local = getLocalOrInitial<Borrowing[]>('rk_makmur_borrowings', INITIAL_BORROWINGS);
     if (snapshot.empty) {
-      const local = getLocalOrInitial<Borrowing[]>('rk_makmur_borrowings', INITIAL_BORROWINGS);
       if (local.length > 0) {
         for (const borrowing of local) {
           await setDoc(doc(db, 'borrowings', borrowing.id), borrowing);
@@ -138,6 +160,17 @@ export function subscribeBorrowings(onData: (borrowings: Borrowing[]) => void) {
     snapshot.forEach((docSnap) => {
       borrowingsList.push(docSnap.data() as Borrowing);
     });
+
+    if (local.length > 0) {
+      const cloudIds = new Set(borrowingsList.map(b => b.id));
+      for (const b of local) {
+        if (!cloudIds.has(b.id)) {
+          borrowingsList.push(b);
+          setDoc(doc(db, 'borrowings', b.id), b).catch(e => console.error("Sync borrowing error:", e));
+        }
+      }
+    }
+
     onData(borrowingsList);
   }, (err) => {
     console.error("Firestore Subscribe Borrowings Error:", err);
@@ -176,8 +209,8 @@ export async function deleteBorrowingFromCloud(id: string) {
 export function subscribeVisitors(onData: (visitors: Visitor[]) => void) {
   const colRef = collection(db, 'visitors');
   return onSnapshot(colRef, async (snapshot) => {
+    const local = getLocalOrInitial<Visitor[]>('rk_makmur_visitors', INITIAL_VISITORS);
     if (snapshot.empty) {
-      const local = getLocalOrInitial<Visitor[]>('rk_makmur_visitors', INITIAL_VISITORS);
       if (local.length > 0) {
         for (const visitor of local) {
           await setDoc(doc(db, 'visitors', visitor.id), visitor);
@@ -190,6 +223,17 @@ export function subscribeVisitors(onData: (visitors: Visitor[]) => void) {
     snapshot.forEach((docSnap) => {
       visitorsList.push(docSnap.data() as Visitor);
     });
+
+    if (local.length > 0) {
+      const cloudIds = new Set(visitorsList.map(v => v.id));
+      for (const v of local) {
+        if (!cloudIds.has(v.id)) {
+          visitorsList.push(v);
+          setDoc(doc(db, 'visitors', v.id), v).catch(e => console.error("Sync visitor error:", e));
+        }
+      }
+    }
+
     onData(visitorsList);
   }, (err) => {
     console.error("Firestore Subscribe Visitors Error:", err);
