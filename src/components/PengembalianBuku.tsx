@@ -139,6 +139,11 @@ export default function PengembalianBuku({ borrowings, onReturnBook }: Pengembal
                         <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-500/5 px-2 py-0.5 rounded border border-amber-500/15">
                           {loan.id}
                         </span>
+                        {loan.jumlahPerpanjangan && loan.jumlahPerpanjangan > 0 ? (
+                          <span className="text-[9px] font-mono font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                            Diperpanjang ({loan.jumlahPerpanjangan}x)
+                          </span>
+                        ) : null}
                         <h4 className="text-xs font-bold text-zinc-100 truncate">
                           {loan.namaAnggota} <span className="text-[10px] text-zinc-500">({loan.kelasAnggota === 'Guru' ? 'Guru' : `Kelas ${loan.kelasAnggota}`})</span>
                         </h4>
