@@ -14,12 +14,6 @@ import {
   INITIAL_VISITORS 
 } from '../data/mockData';
 
-// Track initial seed status to avoid re-seeding
-let isBooksSeeded = false;
-let isMembersSeeded = false;
-let isBorrowingsSeeded = false;
-let isVisitorsSeeded = false;
-
 // Helper to seed from localStorage or INITIAL fallback
 function getLocalOrInitial<T>(key: string, fallback: T): T {
   try {
@@ -40,13 +34,15 @@ function getLocalOrInitial<T>(key: string, fallback: T): T {
 export function subscribeBooks(onData: (books: Book[]) => void) {
   const colRef = collection(db, 'books');
   return onSnapshot(colRef, async (snapshot) => {
-    if (snapshot.empty && !isBooksSeeded) {
-      isBooksSeeded = true;
-      const seedBooks = getLocalOrInitial('rk_makmur_books', INITIAL_BOOKS);
-      for (const book of seedBooks) {
-        await setDoc(doc(db, 'books', book.kodeBuku), book);
+    if (snapshot.empty) {
+      const local = getLocalOrInitial<Book[]>('rk_makmur_books', INITIAL_BOOKS);
+      if (local.length > 0) {
+        for (const book of local) {
+          await setDoc(doc(db, 'books', book.kodeBuku), book);
+        }
+        onData(local);
+        return;
       }
-      return;
     }
     const booksList: Book[] = [];
     snapshot.forEach((docSnap) => {
@@ -55,31 +51,43 @@ export function subscribeBooks(onData: (books: Book[]) => void) {
     onData(booksList);
   }, (err) => {
     console.error("Firestore Subscribe Books Error:", err);
+    const local = getLocalOrInitial<Book[]>('rk_makmur_books', INITIAL_BOOKS);
+    onData(local);
   });
 }
 
 export async function saveBookToCloud(book: Book, oldKodeBuku?: string) {
-  if (oldKodeBuku && oldKodeBuku !== book.kodeBuku) {
-    await deleteDoc(doc(db, 'books', oldKodeBuku));
+  try {
+    if (oldKodeBuku && oldKodeBuku !== book.kodeBuku) {
+      await deleteDoc(doc(db, 'books', oldKodeBuku));
+    }
+    await setDoc(doc(db, 'books', book.kodeBuku), book);
+  } catch (err) {
+    console.error("Cloud save book error:", err);
   }
-  await setDoc(doc(db, 'books', book.kodeBuku), book);
 }
 
 export async function deleteBookFromCloud(kodeBuku: string) {
-  await deleteDoc(doc(db, 'books', kodeBuku));
+  try {
+    await deleteDoc(doc(db, 'books', kodeBuku));
+  } catch (err) {
+    console.error("Cloud delete book error:", err);
+  }
 }
 
 // 2. MEMBERS SUBSCRIPTION & MUTATIONS
 export function subscribeMembers(onData: (members: Member[]) => void) {
   const colRef = collection(db, 'members');
   return onSnapshot(colRef, async (snapshot) => {
-    if (snapshot.empty && !isMembersSeeded) {
-      isMembersSeeded = true;
-      const seedMembers = getLocalOrInitial('rk_makmur_members', INITIAL_MEMBERS);
-      for (const member of seedMembers) {
-        await setDoc(doc(db, 'members', member.nomorAnggota), member);
+    if (snapshot.empty) {
+      const local = getLocalOrInitial<Member[]>('rk_makmur_members', INITIAL_MEMBERS);
+      if (local.length > 0) {
+        for (const member of local) {
+          await setDoc(doc(db, 'members', member.nomorAnggota), member);
+        }
+        onData(local);
+        return;
       }
-      return;
     }
     const membersList: Member[] = [];
     snapshot.forEach((docSnap) => {
@@ -88,31 +96,43 @@ export function subscribeMembers(onData: (members: Member[]) => void) {
     onData(membersList);
   }, (err) => {
     console.error("Firestore Subscribe Members Error:", err);
+    const local = getLocalOrInitial<Member[]>('rk_makmur_members', INITIAL_MEMBERS);
+    onData(local);
   });
 }
 
 export async function saveMemberToCloud(member: Member, oldNomorAnggota?: string) {
-  if (oldNomorAnggota && oldNomorAnggota !== member.nomorAnggota) {
-    await deleteDoc(doc(db, 'members', oldNomorAnggota));
+  try {
+    if (oldNomorAnggota && oldNomorAnggota !== member.nomorAnggota) {
+      await deleteDoc(doc(db, 'members', oldNomorAnggota));
+    }
+    await setDoc(doc(db, 'members', member.nomorAnggota), member);
+  } catch (err) {
+    console.error("Cloud save member error:", err);
   }
-  await setDoc(doc(db, 'members', member.nomorAnggota), member);
 }
 
 export async function deleteMemberFromCloud(nomorAnggota: string) {
-  await deleteDoc(doc(db, 'members', nomorAnggota));
+  try {
+    await deleteDoc(doc(db, 'members', nomorAnggota));
+  } catch (err) {
+    console.error("Cloud delete member error:", err);
+  }
 }
 
 // 3. BORROWINGS SUBSCRIPTION & MUTATIONS
 export function subscribeBorrowings(onData: (borrowings: Borrowing[]) => void) {
   const colRef = collection(db, 'borrowings');
   return onSnapshot(colRef, async (snapshot) => {
-    if (snapshot.empty && !isBorrowingsSeeded) {
-      isBorrowingsSeeded = true;
-      const seedBorrowings = getLocalOrInitial('rk_makmur_borrowings', INITIAL_BORROWINGS);
-      for (const borrowing of seedBorrowings) {
-        await setDoc(doc(db, 'borrowings', borrowing.id), borrowing);
+    if (snapshot.empty) {
+      const local = getLocalOrInitial<Borrowing[]>('rk_makmur_borrowings', INITIAL_BORROWINGS);
+      if (local.length > 0) {
+        for (const borrowing of local) {
+          await setDoc(doc(db, 'borrowings', borrowing.id), borrowing);
+        }
+        onData(local);
+        return;
       }
-      return;
     }
     const borrowingsList: Borrowing[] = [];
     snapshot.forEach((docSnap) => {
@@ -121,34 +141,50 @@ export function subscribeBorrowings(onData: (borrowings: Borrowing[]) => void) {
     onData(borrowingsList);
   }, (err) => {
     console.error("Firestore Subscribe Borrowings Error:", err);
+    const local = getLocalOrInitial<Borrowing[]>('rk_makmur_borrowings', INITIAL_BORROWINGS);
+    onData(local);
   });
 }
 
 export async function saveBorrowingToCloud(borrowing: Borrowing) {
-  await setDoc(doc(db, 'borrowings', borrowing.id), borrowing);
+  try {
+    await setDoc(doc(db, 'borrowings', borrowing.id), borrowing);
+  } catch (err) {
+    console.error("Cloud save borrowing error:", err);
+  }
 }
 
 export async function saveBatchBorrowingsToCloud(borrowings: Borrowing[]) {
   for (const item of borrowings) {
-    await setDoc(doc(db, 'borrowings', item.id), item);
+    try {
+      await setDoc(doc(db, 'borrowings', item.id), item);
+    } catch (err) {
+      console.error("Cloud batch save error:", err);
+    }
   }
 }
 
 export async function deleteBorrowingFromCloud(id: string) {
-  await deleteDoc(doc(db, 'borrowings', id));
+  try {
+    await deleteDoc(doc(db, 'borrowings', id));
+  } catch (err) {
+    console.error("Cloud delete borrowing error:", err);
+  }
 }
 
 // 4. VISITORS SUBSCRIPTION & MUTATIONS
 export function subscribeVisitors(onData: (visitors: Visitor[]) => void) {
   const colRef = collection(db, 'visitors');
   return onSnapshot(colRef, async (snapshot) => {
-    if (snapshot.empty && !isVisitorsSeeded) {
-      isVisitorsSeeded = true;
-      const seedVisitors = getLocalOrInitial('rk_makmur_visitors', INITIAL_VISITORS);
-      for (const visitor of seedVisitors) {
-        await setDoc(doc(db, 'visitors', visitor.id), visitor);
+    if (snapshot.empty) {
+      const local = getLocalOrInitial<Visitor[]>('rk_makmur_visitors', INITIAL_VISITORS);
+      if (local.length > 0) {
+        for (const visitor of local) {
+          await setDoc(doc(db, 'visitors', visitor.id), visitor);
+        }
+        onData(local);
+        return;
       }
-      return;
     }
     const visitorsList: Visitor[] = [];
     snapshot.forEach((docSnap) => {
@@ -157,15 +193,25 @@ export function subscribeVisitors(onData: (visitors: Visitor[]) => void) {
     onData(visitorsList);
   }, (err) => {
     console.error("Firestore Subscribe Visitors Error:", err);
+    const local = getLocalOrInitial<Visitor[]>('rk_makmur_visitors', INITIAL_VISITORS);
+    onData(local);
   });
 }
 
 export async function saveVisitorToCloud(visitor: Visitor) {
-  await setDoc(doc(db, 'visitors', visitor.id), visitor);
+  try {
+    await setDoc(doc(db, 'visitors', visitor.id), visitor);
+  } catch (err) {
+    console.error("Cloud save visitor error:", err);
+  }
 }
 
 export async function deleteVisitorFromCloud(id: string) {
-  await deleteDoc(doc(db, 'visitors', id));
+  try {
+    await deleteDoc(doc(db, 'visitors', id));
+  } catch (err) {
+    console.error("Cloud delete visitor error:", err);
+  }
 }
 
 // 5. ADMIN NAME SETTINGS SUBSCRIPTION & MUTATION
@@ -182,11 +228,17 @@ export function subscribeAdminName(onData: (adminName: string) => void) {
     }
   }, (err) => {
     console.error("Firestore Subscribe Admin Config Error:", err);
+    const defaultName = localStorage.getItem('rk_makmur_admin_name') || 'Administrator RK Makmur';
+    onData(defaultName);
   });
 }
 
 export async function saveAdminNameToCloud(adminName: string) {
-  await setDoc(doc(db, 'settings', 'adminConfig'), { adminName });
+  try {
+    await setDoc(doc(db, 'settings', 'adminConfig'), { adminName });
+  } catch (err) {
+    console.error("Cloud save admin name error:", err);
+  }
 }
 
 // 6. FORCE RESTORE ALL INITIAL SAMPLE DATA TO CLOUD
