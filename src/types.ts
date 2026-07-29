@@ -55,6 +55,7 @@ export interface Borrowing {
   denda?: number; // Late return fee
   jumlah?: number;
   keterangan?: string;
+  jumlahPerpanjangan?: number; // berapa kali diperpanjang
 }
 
 export interface Visitor {
