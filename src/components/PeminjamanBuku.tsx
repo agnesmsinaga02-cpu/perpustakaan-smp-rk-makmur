@@ -13,7 +13,9 @@ import {
   Edit2,
   Trash2,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  CalendarPlus,
+  Clock
 } from 'lucide-react';
 import { Book, Member, Borrowing } from '../types';
 import { downloadBorrowingsPDF } from '../utils/pdfGenerator';
@@ -67,6 +69,14 @@ export default function PeminjamanBuku({
   const [editJumlah, setEditJumlah] = useState(1);
   const [editKeterangan, setEditKeterangan] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Extension States
+  const [isExtendModalOpen, setIsExtendModalOpen] = useState(false);
+  const [extendingBorrowing, setExtendingBorrowing] = useState<Borrowing | null>(null);
+  const [extensionDays, setExtensionDays] = useState(7);
+  const [extensionCustomDate, setExtensionCustomDate] = useState('');
+  const [extensionNote, setExtensionNote] = useState('');
+  const [extensionError, setExtensionError] = useState('');
 
   // Auto-generate transaction ID
   const generateTxId = () => {
@@ -173,6 +183,60 @@ export default function PeminjamanBuku({
 
     onEditBorrowing(updated);
     setIsEditModalOpen(false);
+  };
+
+  // Extension Modal Handlers
+  const handleOpenExtend = (b: Borrowing) => {
+    setExtendingBorrowing(b);
+    setExtensionDays(7);
+    const baseDate = new Date(b.tanggalHarusKembali);
+    baseDate.setDate(baseDate.getDate() + 7);
+    setExtensionCustomDate(baseDate.toISOString().slice(0, 10));
+    setExtensionNote('');
+    setExtensionError('');
+    setIsExtendModalOpen(true);
+  };
+
+  const handleApplyPresetDays = (days: number) => {
+    if (!extendingBorrowing) return;
+    setExtensionDays(days);
+    const baseDate = new Date(extendingBorrowing.tanggalHarusKembali);
+    baseDate.setDate(baseDate.getDate() + days);
+    setExtensionCustomDate(baseDate.toISOString().slice(0, 10));
+  };
+
+  const handleSaveExtension = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!extendingBorrowing) return;
+
+    if (!extensionCustomDate) {
+      setExtensionError('Silakan pilih tanggal pengembalian yang baru!');
+      return;
+    }
+
+    if (extensionCustomDate <= extendingBorrowing.tanggalHarusKembali) {
+      setExtensionError('Tanggal pengembalian baru harus lebih lama dari tanggal batas kembali saat ini!');
+      return;
+    }
+
+    const currentTimes = extendingBorrowing.jumlahPerpanjangan || 0;
+    const newTimes = currentTimes + 1;
+    let newNote = extendingBorrowing.keterangan || '';
+    if (extensionNote.trim()) {
+      newNote = newNote ? `${newNote} | Perpanjang: ${extensionNote.trim()}` : `Perpanjang: ${extensionNote.trim()}`;
+    }
+
+    const updated: Borrowing = {
+      ...extendingBorrowing,
+      tanggalHarusKembali: extensionCustomDate,
+      jumlahPerpanjangan: newTimes,
+      keterangan: newNote || undefined
+    };
+
+    onEditBorrowing(updated);
+    setIsExtendModalOpen(false);
+    setFormSuccess(`Sukses! Masa peminjaman buku "${extendingBorrowing.judulBuku}" diperpanjang hingga ${extensionCustomDate}.`);
+    setTimeout(() => setFormSuccess(''), 5000);
   };
 
   // Filter listings
@@ -605,16 +669,34 @@ export default function PeminjamanBuku({
                       <td className="px-3 py-3 font-mono text-[11px] text-zinc-400">{b.tanggalPinjam}</td>
                       <td className="px-3 py-3 font-mono text-[11px] text-zinc-400">{b.tanggalHarusKembali}</td>
                       <td className="px-3 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold font-mono ${
-                          b.status === 'Dipinjam'
-                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            : 'bg-green-500/10 text-green-400 border border-green-500/20'
-                        }`}>
-                          {b.status}
-                        </span>
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold font-mono ${
+                            b.status === 'Dipinjam'
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              : 'bg-green-500/10 text-green-400 border border-green-500/20'
+                          }`}>
+                            {b.status}
+                          </span>
+                          {b.jumlahPerpanjangan && b.jumlahPerpanjangan > 0 ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20" title={`Diperpanjang ${b.jumlahPerpanjangan} kali`}>
+                              <Clock className="w-2.5 h-2.5 text-blue-400" />
+                              <span>Ext ({b.jumlahPerpanjangan}x)</span>
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-3 py-3 text-right">
-                        <div className="flex justify-end gap-1.5">
+                        <div className="flex justify-end items-center gap-1.5">
+                          {b.status === 'Dipinjam' && (
+                            <button
+                              onClick={() => handleOpenExtend(b)}
+                              className="p-1 rounded bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-all cursor-pointer flex items-center gap-1 px-2 text-[10px] font-bold"
+                              title="Perpanjang Masa Pinjam Buku"
+                            >
+                              <CalendarPlus className="w-3 h-3 text-blue-400" />
+                              <span>Perpanjang</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => handleOpenEdit(b)}
                             className="p-1 rounded bg-zinc-950 border border-zinc-800 hover:border-amber-500/40 text-amber-500 hover:text-amber-400 transition-all cursor-pointer"
@@ -741,6 +823,150 @@ export default function PeminjamanBuku({
                 >
                   <Sparkles className="w-3.5 h-3.5 text-zinc-950" />
                   <span>Simpan Perubahan</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Perpanjangan Buku Modal */}
+      {isExtendModalOpen && extendingBorrowing && (
+        <div className="fixed inset-0 bg-black/65 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-zinc-900 border border-blue-500/30 rounded-2xl w-full max-w-md overflow-hidden relative shadow-2xl">
+            <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-blue-500 to-transparent" />
+            
+            <div className="p-5 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/90">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                  <CalendarPlus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-zinc-100 font-sans">Perpanjang Masa Peminjaman</h3>
+                  <p className="text-[10px] text-zinc-500 font-mono">ID: {extendingBorrowing.id}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsExtendModalOpen(false)}
+                className="text-zinc-500 hover:text-zinc-300 transition-colors p-1 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveExtension} className="p-5 space-y-4">
+              {extensionError && (
+                <div className="p-3 bg-red-950/40 border border-red-500/20 text-red-300 rounded-xl text-xs flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-400" />
+                  <span>{extensionError}</span>
+                </div>
+              )}
+
+              {/* Information Summary */}
+              <div className="text-xs bg-zinc-950 p-3.5 rounded-xl space-y-1.5 border border-zinc-800/80">
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Peminjam:</span> 
+                  <span className="text-zinc-200 font-semibold">{extendingBorrowing.namaAnggota} ({extendingBorrowing.kelasAnggota})</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Buku:</span> 
+                  <span className="text-zinc-200 font-semibold truncate max-w-[200px]">{extendingBorrowing.judulBuku}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Tgl Pinjam Awal:</span> 
+                  <span className="font-mono text-zinc-300">{extendingBorrowing.tanggalPinjam}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Batas Kembali Sekarang:</span> 
+                  <span className="font-mono text-amber-400 font-bold">{extendingBorrowing.tanggalHarusKembali}</span>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-zinc-850">
+                  <span className="text-zinc-500">Status Perpanjangan:</span> 
+                  <span className="font-mono text-blue-400 font-bold">
+                    {extendingBorrowing.jumlahPerpanjangan ? `${extendingBorrowing.jumlahPerpanjangan}x Diperpanjang` : 'Belum pernah'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-mono tracking-wider text-zinc-500 uppercase block">Pilihan Durasi Perpanjangan</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPresetDays(3)}
+                    className={`py-2 px-2 rounded-xl text-xs font-semibold font-mono border transition-all cursor-pointer ${
+                      extensionDays === 3 
+                        ? 'bg-blue-500/20 border-blue-500 text-blue-300 font-bold' 
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                    }`}
+                  >
+                    +3 Hari
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPresetDays(7)}
+                    className={`py-2 px-2 rounded-xl text-xs font-semibold font-mono border transition-all cursor-pointer ${
+                      extensionDays === 7 
+                        ? 'bg-blue-500/20 border-blue-500 text-blue-300 font-bold' 
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                    }`}
+                  >
+                    +7 Hari (1 Wk)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPresetDays(14)}
+                    className={`py-2 px-2 rounded-xl text-xs font-semibold font-mono border transition-all cursor-pointer ${
+                      extensionDays === 14 
+                        ? 'bg-blue-500/20 border-blue-500 text-blue-300 font-bold' 
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                    }`}
+                  >
+                    +14 Hari (2 Wk)
+                  </button>
+                </div>
+              </div>
+
+              {/* Custom Target Date */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono tracking-wider text-zinc-500 uppercase block">Tanggal Batas Kembali Baru</label>
+                <input
+                  type="date"
+                  value={extensionCustomDate}
+                  min={extendingBorrowing.tanggalHarusKembali}
+                  onChange={(e) => setExtensionCustomDate(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 focus:border-blue-500 text-zinc-100 rounded-xl px-3 py-2 text-xs outline-none font-mono"
+                  required
+                />
+              </div>
+
+              {/* Note / Reason */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono tracking-wider text-zinc-500 uppercase block">Alasan / Catatan Perpanjangan (Opsional)</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Belum selesai dibaca untuk tugas..."
+                  value={extensionNote}
+                  onChange={(e) => setExtensionNote(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 focus:border-blue-500 text-zinc-100 rounded-xl px-3 py-2 text-xs outline-none placeholder:text-zinc-700"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-zinc-800 flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsExtendModalOpen(false)}
+                  className="flex-1 bg-zinc-950 border border-zinc-800 text-zinc-400 py-2.5 rounded-xl text-xs hover:text-zinc-300 transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-2.5 rounded-xl text-xs hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/10 cursor-pointer"
+                >
+                  <CalendarPlus className="w-3.5 h-3.5" />
+                  <span>Simpan Perpanjangan</span>
                 </button>
               </div>
             </form>
