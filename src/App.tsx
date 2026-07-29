@@ -37,7 +37,19 @@ export default function App() {
   // Core Databases loaded from cloud / local storage fallback
   const [books, setBooks] = useState<Book[]>(() => {
     const local = localStorage.getItem('rk_makmur_books');
-    return local ? JSON.parse(local) : INITIAL_BOOKS;
+    if (local) {
+      try {
+        const parsed: Book[] = JSON.parse(local);
+        const filtered = parsed.filter(b => !['B001','B002','B003','B004','B005','B006'].includes(b.kodeBuku));
+        if (filtered.length !== parsed.length) {
+          localStorage.setItem('rk_makmur_books', JSON.stringify(filtered));
+        }
+        return filtered;
+      } catch {
+        return [];
+      }
+    }
+    return INITIAL_BOOKS;
   });
   
   const [members, setMembers] = useState<Member[]>(() => {
@@ -47,12 +59,26 @@ export default function App() {
 
   const [borrowings, setBorrowings] = useState<Borrowing[]>(() => {
     const local = localStorage.getItem('rk_makmur_borrowings');
-    return local ? JSON.parse(local) : INITIAL_BORROWINGS;
+    if (local) {
+      try {
+        return JSON.parse(local);
+      } catch {
+        return [];
+      }
+    }
+    return INITIAL_BORROWINGS;
   });
 
   const [visitors, setVisitors] = useState<Visitor[]>(() => {
     const local = localStorage.getItem('rk_makmur_visitors');
-    return local ? JSON.parse(local) : INITIAL_VISITORS;
+    if (local) {
+      try {
+        return JSON.parse(local);
+      } catch {
+        return [];
+      }
+    }
+    return INITIAL_VISITORS;
   });
 
   // Admin Account state
