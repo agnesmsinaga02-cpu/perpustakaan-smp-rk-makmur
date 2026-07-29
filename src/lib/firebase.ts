@@ -6,14 +6,15 @@ import {
   getDocs, 
   setDoc, 
   deleteDoc, 
-  onSnapshot 
+  onSnapshot,
+  enableIndexedDbPersistence
 } from 'firebase/firestore';
 import firebaseConfigJson from '../../firebase-applet-config.json';
 
 const safeConfig = (firebaseConfigJson as Record<string, string>) || {};
 
 const config = {
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || safeConfig.projectId || 'ai-studio-perpustakaansmpr',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || safeConfig.projectId || 'gen-lang-client-0957103195',
   appId: import.meta.env.VITE_FIREBASE_APP_ID || safeConfig.appId || '',
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || safeConfig.apiKey || '',
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || safeConfig.authDomain || '',
@@ -27,6 +28,16 @@ const app = !getApps().length ? initializeApp(config) : getApp();
 export const db = config.firestoreDatabaseId 
   ? getFirestore(app, config.firestoreDatabaseId)
   : getFirestore(app);
+
+if (typeof window !== 'undefined') {
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn('Firestore persistence enabled in another tab.');
+    } else if (err.code === 'unimplemented') {
+      console.warn('Firestore persistence not supported in browser.');
+    }
+  });
+}
 
 export {
   collection,
